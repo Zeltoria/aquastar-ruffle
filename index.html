@@ -2,21 +2,23 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Aquastar Ruffle - Fixed</title>
   <style>
-    html,body{margin:0;height:100%;background:#000;overflow:hidden}
+    html,body{margin:0;height:100%;background:#000;overflow:hidden; touch-action: none;}
     #container{width:100%;height:100%}
     #fps-counter {
       position: absolute;
-      top: 5px;
-      left: 5px;
-      color: #0f0;
-      background-color: rgba(0,0,0,0.7);
-      padding: 2px 8px;
+      top: 10px;
+      left: 10px;
+      color: #00ff00;
+      background: rgba(0,0,0,0.6);
+      padding: 4px 8px;
       font-family: monospace;
       font-size: 12px;
-      z-index: 1000;
-      border-radius: 3px;
+      z-index: 99;
+      border-radius: 4px;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -28,31 +30,25 @@
 
   <script>
     const servers = {
-      Twilly:      { host: 'socket5.aq.com',      port: 5588 },
-      Artix:       { host: 'socket.aq.com',       port: 5588 },
-      Yorumi:      { host: 'socket3.aq.com',      port: 5588 },
-      Yokai:       { host: 'asia.game.artix.com', port: 5588 }
+      Twilly: { host: 'socket5.aq.com', port: 5588 },
+      Artix:  { host: 'socket.aq.com',  port: 5588 }
     };
 
     const choice = new URLSearchParams(location.search).get('server') || 'Twilly';
     const srv = servers[choice] || servers.Twilly;
 
-    // Tambahkan Proxy CORS agar Ruffle bisa mendownload SWF dari server Artix
-    const corsProxy = "https://cors-anywhere.azm.workers.dev/"; 
-    const swfUrl = "https://game.aq.com/game/gamefiles/Loader_Spider.swf";
-
     window.RufflePlayer = window.RufflePlayer || {};
     window.RufflePlayer.config = {
       logLevel: 'error',
-      // PENTING: SocketProxy butuh server perantara (lihat langkah di bawah)
+      // Agar bisa login, kamu harus menjalankan proxy di Termux (localhost:8181)
       socketProxy: [{
         host: srv.host,
         port: srv.port,
         proxyUrl: `ws://localhost:8181?host=${srv.host}&port=${srv.port}`
       }],
-      allowFullscreen: true,
       autoplay: "on",
-      unmuteOverlay: "hidden"
+      unmuteOverlay: "hidden",
+      letterbox: "on"
     };
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -61,13 +57,17 @@
       document.getElementById('container').appendChild(player);
 
       player.load({
-        url: corsProxy + swfUrl, // Menggunakan proxy untuk bypass CORS
+        // Memanggil file yang sudah kamu upload ke GitHub tadi
+        url: 'Loader_Spider.swf', 
         allowScriptAccess: true,
         parameters: {
           base: 'https://game.aq.com/game/gamefiles/',
           allowNetworking: 'all'
         }
-      }).catch(e => console.error('Ruffle Error:', e));
+      }).catch(e => {
+        console.error('Gagal memuat SWF:', e);
+        alert('Pastikan file Loader_Spider.swf sudah di-upload ke GitHub!');
+      });
 
       // FPS Counter
       let frameCount = 0;
@@ -75,11 +75,11 @@
       const fpsElement = document.getElementById('fps-counter');
       function updateFPS() {
         frameCount++;
-        const currentTime = performance.now();
-        if (currentTime - lastTime >= 1000) {
-          fpsElement.textContent = `FPS: ${Math.round((frameCount * 1000) / (currentTime - lastTime))}`;
+        const now = performance.now();
+        if (now - lastTime >= 1000) {
+          fpsElement.textContent = `FPS: ${Math.round((frameCount * 1000) / (now - lastTime))}`;
           frameCount = 0;
-          lastTime = currentTime;
+          lastTime = now;
         }
         requestAnimationFrame(updateFPS);
       }
