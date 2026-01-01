@@ -1,33 +1,62 @@
 <!doctype html>
-<html>
+<html lang="id">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AQW Mobile Fix</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AQW Mobile - Ruffle Edition</title>
   <style>
-    html,body{margin:0;height:100%;background:#000;overflow:hidden}
-    #container{width:100vw;height:100vh}
+    /* Menghilangkan margin dan scrollbar agar full layar */
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+    #container { width: 100vw; height: 100vh; }
+    
+    /* Indikator FPS di pojok kiri atas */
+    #fps-counter {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #00ff00;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      z-index: 100;
+      border-radius: 5px;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
+
+  <div id="fps-counter">FPS: 0</div>
   <div id="container"></div>
 
   <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 
   <script>
-    // Proxy publik untuk menembus blokir CORS
-    const proxy = "https://api.allorigins.win/raw?url=";
-    const swf = "https://game.aq.com/game/gamefiles/Loader_Spider.swf";
+    // Konfigurasi Server AQW
+    const servers = {
+      Twilly: { host: 'socket5.aq.com', port: 5588 },
+      Artix:  { host: 'socket.aq.com',  port: 5588 },
+      Yorumi: { host: 'socket3.aq.com', port: 5588 },
+      Yokai:  { host: 'asia.game.artix.com', port: 5588 }
+    };
+
+    // Ambil pilihan server dari URL (default Twilly)
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedServer = urlParams.get('server') || 'Twilly';
+    const srv = servers[selectedServer] || servers.Twilly;
 
     window.RufflePlayer = window.RufflePlayer || {};
     window.RufflePlayer.config = {
       autoplay: "on",
       unmuteOverlay: "hidden",
-      // Proxy socket ke localhost untuk Termux
+      letterbox: "on",
+      warnOnUnsupportedContent: false,
+      // Proxy Socket mengarah ke Termux (Localhost)
       socketProxy: [{
-        host: "socket5.aq.com",
-        port: 5588,
-        proxyUrl: "ws://localhost:8181"
+        host: srv.host,
+        port: srv.port,
+        proxyUrl: `ws://localhost:8181?host=${srv.host}&port=${srv.port}`
       }]
     };
 
@@ -37,13 +66,33 @@
       document.getElementById('container').appendChild(player);
 
       player.load({
-        url: proxy + encodeURIComponent(swf),
+        // WAJIB: Upload file Loader_Spider.swf ke GitHub kamu!
+        url: 'Loader_Spider.swf', 
         allowScriptAccess: true,
         parameters: {
-          base: "https://game.aq.com/game/gamefiles/",
-          allowNetworking: "all"
+          base: 'https://game.aq.com/game/gamefiles/',
+          allowNetworking: 'all'
         }
+      }).catch(err => {
+        console.error("Ruffle gagal dimuat:", err);
       });
+
+      // Sistem Penghitung FPS
+      let frames = 0;
+      let startTime = performance.now();
+      const fpsDisplay = document.getElementById('fps-counter');
+
+      function trackFPS() {
+        frames++;
+        let now = performance.now();
+        if (now - startTime >= 1000) {
+          fpsDisplay.textContent = `FPS: ${Math.round((frames * 1000) / (now - startTime))}`;
+          frames = 0;
+          startTime = now;
+        }
+        requestAnimationFrame(trackFPS);
+      }
+      trackFPS();
     });
   </script>
 </body>
